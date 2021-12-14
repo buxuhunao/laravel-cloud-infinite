@@ -18,5 +18,12 @@
         "psr-4": {
             "Buxuhunao\\CloudInfinite\\": "src"
         }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Buxuhunao\\CloudInfinite\\ServiceProvider"
+            ]
+        }
     }
 }
