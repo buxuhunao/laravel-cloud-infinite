@@ -1,6 +1,6 @@
 {
-    "name": "buxuhunao/cloud-infinite",
-    "description": "腾讯云数据万象",
+    "name": "buxuhunao/laravel-cloud-infinite",
+    "description": "腾讯云数据万象 for Laravel",
     "license": "MIT",
     "authors": [
         {

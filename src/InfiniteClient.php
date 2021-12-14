@@ -9,8 +9,6 @@ use Overtrue\CosClient\Support\XML;
 
 class InfiniteClient extends Client
 {
-    protected const BASE_URI = '/%s?ci-process=ImageSearch&action=%s';
-
     protected string $baseUri = '';
 
     public function __construct($config)
@@ -33,27 +31,32 @@ class InfiniteClient extends Client
         parent::__construct($config->extend([
             'guzzle' => [
                 'base_uri' => $this->baseUri,
+                'headers' => ['Content-Type' => 'application/xml']
             ],
         ]));
+    }
+
+    public function getBaseUri(): string
+    {
+        return $this->baseUri;
     }
 
     // 开通服务
     public function subscribe(int $capacity = 1000000, int $qps = 10)
     {
-        $this->setCiDomain();
+        $baseUri = str_replace('.cos.', '.ci.', $this->baseUri);
+        $uri = $baseUri . 'ImageSearchBucket';
         $body = ['Request' => [
             'MaxCapacity' => $capacity,
             'MaxQps' => $qps
         ]];
 
-        return $this->post('ImageSearchBucket', ['body' => XML::fromArray($body)]);
+        return $this->post($uri, ['body' => XML::fromArray($body)]);
     }
 
-    protected function setCiDomain()
+    protected function imageSearchUri($key, $action): string
     {
-        $baseUri = str_replace('.cos.', '.ci.', $this->baseUri);
-
-        $this->setHttpClientOptions(['base_uri' => $baseUri]);
+        return sprintf('/%s?ci-process=ImageSearch&action=%s', $key, $action);
     }
 
     // 添加图片
@@ -64,7 +67,7 @@ class InfiniteClient extends Client
         }
 
         return $this->post(
-            sprintf(static::BASE_URI, $key, 'AddImage'),
+            $this->imageSearchUri($key, 'AddImage'),
             ['body' => XML::fromArray(['Request' => $param])]
         );
     }
@@ -72,17 +75,18 @@ class InfiniteClient extends Client
     // 搜索图片
     public function searchImage(string $key, array $query = [])
     {
-        $uri = sprintf(self::BASE_URI, $key, 'SearchImage');
-        $uri = trim($uri . '&' . http_build_query($query), '&');
+        $uri = $this->handleGetUrl($this->imageSearchUri($key, 'SearchImage'), $query);
 
         return $this->get($uri);
     }
 
     // 删除图片
-    public function deleteImage(string $key, string $EntityId)
+    public function deleteImage(string $key, string $EntityId = null)
     {
+        $EntityId ??= $key;
+
         return $this->post(
-            sprintf(self::BASE_URI, $key, 'DeleteImage'),
+            $this->imageSearchUri($key, 'DeleteImage'),
             ['body' => XML::fromArray(['Request' => compact('EntityId')])]
         );
     }
@@ -90,7 +94,12 @@ class InfiniteClient extends Client
     public function ocr(string $key, array $query = [])
     {
         return $this->get(
-            sprintf(self::BASE_URI, $key, compact('query'))
+            $this->handleGetUrl(sprintf('/%s?ci-process=OCR', $key), $query)
         );
+    }
+
+    protected function handleGetUrl($url, $query): string
+    {
+        return trim($url . '&' . http_build_query($query), '&');
     }
 }
